@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+
+import api from "../services/api.js";
 
 const AuthContext = createContext(null);
 
@@ -8,45 +15,78 @@ export const AuthProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("pyb-ai-token");
-    const storedUser = localStorage.getItem("pyb-ai-user");
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem("pyb-ai-token");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
+      if (!storedToken) {
+        setAuthLoading(false);
+        return;
+      }
 
-    setAuthLoading(false);
+      try {
+        setToken(storedToken);
+
+        const response = await api.get("/auth/me");
+
+        setUser(response.data.user);
+
+        localStorage.setItem(
+          "pyb-ai-user",
+          JSON.stringify(response.data.user)
+        );
+      } catch (error) {
+        console.error(
+          "Oturum doğrulama hatası:",
+          error.response?.data || error.message
+        );
+
+        localStorage.removeItem("pyb-ai-token");
+        localStorage.removeItem("pyb-ai-user");
+
+        setToken(null);
+        setUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async ({ email, password }) => {
-    // Şimdilik mock login
-    // Backend bağlayınca burası axios.post("/api/auth/login") olacak
-
-    if (email === "admin@pybai.com" && password === "123456") {
-      const mockToken = "mock-token"; // bu token backendden gelecek
-
-      const mockUser = {
-        name: "PYB Uzmanı",
+    try {
+      const response = await api.post("/auth/login", {
         email,
-        role: "admin",
-      };
+        password,
+      });
 
-      localStorage.setItem("pyb-ai-token", mockToken);
-      localStorage.setItem("pyb-ai-user", JSON.stringify(mockUser));
+      const { token: receivedToken, user: receivedUser } = response.data;
 
-      setToken(mockToken);
-      setUser(mockUser);
+      localStorage.setItem("pyb-ai-token", receivedToken);
+      localStorage.setItem(
+        "pyb-ai-user",
+        JSON.stringify(receivedUser)
+      );
+
+      setToken(receivedToken);
+      setUser(receivedUser);
 
       return {
         success: true,
       };
-    }
+    } catch (error) {
+      console.error(
+        "Login hatası:",
+        error.response?.data || error.message
+      );
 
-    return {
-      success: false,
-      message: "E-posta veya şifre hatalı.",
-    };
+      return {
+        success: false,
+        message:
+          error.response?.data?.message ||
+          "Sunucuya bağlanılamadı.",
+      };
+    }
   };
 
   const logout = () => {
@@ -57,7 +97,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const isAuthenticated = !!token && !!user;
+  const isAuthenticated = Boolean(token && user);
 
   const value = {
     user,
@@ -68,14 +108,20 @@ export const AuthProvider = ({ children }) => {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error(
+      "useAuth, AuthProvider içerisinde kullanılmalıdır."
+    );
   }
 
   return context;

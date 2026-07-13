@@ -1,9 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
 
-import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import MainLayout from "./components/layout/MainLayout";
 
 import Login from "./pages/Login";
 import NewAnalysis from "./pages/NewAnalysis";
@@ -14,7 +19,10 @@ const App = () => {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
           <Route
             path="/"
@@ -24,11 +32,26 @@ const App = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<NewAnalysis />} />
-            <Route path="templates" element={<Templates />} />
+            <Route
+              index
+              element={<NewAnalysis />}
+            />
+
+            <Route
+              path="templates"
+              element={<Templates />}
+            />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to="/"
+                replace
+              />
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

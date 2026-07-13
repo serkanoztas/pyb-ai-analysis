@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -12,8 +12,25 @@ import {
 } from "lucide-react";
 
 const Login = () => {
+
+  const {
+    login,
+    isAuthenticated,
+    authLoading,
+  } = useAuth();
+
+
+
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate("/", {
+        replace: true,
+      });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+  
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -22,7 +39,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+
 
   const handleChange = (e) => {
     setForm((prev) => ({
@@ -36,26 +53,33 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.email || !form.password) {
+    if (!form.email.trim() || !form.password) {
       setError("Lütfen e-posta ve şifre alanlarını doldurun.");
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
+      setError("");
 
-    const result = await login({
-      email: form.email,
-      password: form.password,
-    });
+      const result = await login({
+        email: form.email.trim(),
+        password: form.password,
+      });
 
-    if (result.success) {
-      navigate("/");
-    } else {
-      setError(result.message || "Giriş yapılamadı.");
+      if (!result.success) {
+        setError(result.message);
+        return;
+      }
+
+      navigate("/", {
+        replace: true,
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.25),_transparent_35%)]" />

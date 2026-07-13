@@ -2,13 +2,20 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Upload, FileText, FileSearch, LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
+
+
+
 const Sidebar = () => {
 
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+
   const handleLogout = () => {
     logout();
-    navigate("/login");
+
+    navigate("/login", {
+      replace: true,
+    });
   };
 
   return (
@@ -55,15 +62,20 @@ const Sidebar = () => {
         </div>
         <button
           onClick={handleLogout}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-slate-200 hover:bg-white/15 hover:text-white"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/15 hover:text-white"
         >
           <LogOut size={17} />
           Çıkış Yap
         </button>
         {user && (
           <div className="mb-3 rounded-xl bg-white/5 p-3">
-            <p className="text-sm font-medium text-white">{user.name}</p>
-            <p className="text-xs text-slate-400">{user.email}</p>
+            <p className="text-sm font-medium text-white">
+              {user.name}
+            </p>
+
+            <p className="mt-1 truncate text-xs text-slate-400">
+              {user.email}
+            </p>
           </div>
         )}
       </div>
