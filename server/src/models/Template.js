@@ -14,10 +14,8 @@ const templateSchema = new mongoose.Schema(
       required: [true, "Doküman türü zorunludur"],
       enum: [
         "guide",
-        "application_form_template",
         "technical_spec_template",
         "signature_declaration_template",
-        "price_offer_rules",
       ],
     },
 

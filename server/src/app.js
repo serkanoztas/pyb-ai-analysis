@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import templateRoutes from "./routes/templateRoutes.js";
+import analysisRoutes from "./routes/analysisRoutes.js";
 
 const app = express();
 
@@ -24,8 +26,8 @@ app.get("/", (req, res) => {
 
 // ROUTES
 app.use("/api/auth", authRoutes);
-// app.use("/api/templates", templateRoutes);
-// app.use("/api/analysis", analysisRoutes);
+app.use("/api/templates", templateRoutes);
+app.use("/api/analysis", analysisRoutes);
 
 // 404 handler
 app.use((req, res) => {
