@@ -4,6 +4,8 @@ import UploadCard from "./UploadCard";
 const UploadSection = ({ files, loading, onFileChange, onAnalyze }) => {
   const uploadedCount = Object.values(files).filter(Boolean).length;
 
+  const allFilesUploaded = uploadedCount === 4;
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -66,9 +68,10 @@ const UploadSection = ({ files, loading, onFileChange, onAnalyze }) => {
 
       <div className="mt-5 flex justify-end">
         <button
+          type="button"
           onClick={onAnalyze}
-          disabled={loading || uploadedCount === 0}
-          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={loading || !allFilesUploaded}
+          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <>

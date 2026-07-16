@@ -78,7 +78,7 @@ const AnalysisResults = ({ analysisResult, files }) => {
         />
       </section>
 
-      <ReportActions />
+      <ReportActions analysisResult={analysisResult} />
     </div>
   );
 };
