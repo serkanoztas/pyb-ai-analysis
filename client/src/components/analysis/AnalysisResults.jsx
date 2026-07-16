@@ -4,6 +4,7 @@ import UploadedFiles from "./UploadedFiles";
 import PriorityAlignment from "./PriorityAlignment";
 import FindingCard from "./FindingCard";
 import ReportActions from "./ReportActions";
+import FinalEvaluation from "./FinalEvaluation";
 
 import {
   AlertTriangle,
@@ -15,6 +16,9 @@ import {
 } from "lucide-react";
 
 const AnalysisResults = ({ analysisResult, files }) => {
+
+  console.log("AnalysisResults component rendered with analysisResult:", analysisResult.finalEvaluation);
+
   return (
     <div className="mt-6 space-y-6">
       <MetricsSection metrics={analysisResult.metrics} />
@@ -77,6 +81,10 @@ const AnalysisResults = ({ analysisResult, files }) => {
           items={analysisResult.expertReviewItems}
         />
       </section>
+
+      <FinalEvaluation
+        evaluation={analysisResult.finalEvaluation}
+      />
 
       <ReportActions analysisResult={analysisResult} />
     </div>

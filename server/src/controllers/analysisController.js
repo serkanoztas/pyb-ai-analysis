@@ -4,6 +4,8 @@ import extractTextFromFile from "../services/textExtractionService.js";
 import deleteTemporaryFile from "../services/fileCleanupService.js";
 import analyzeWithAI from "../services/aiService.js";
 import buildAnalysisPrompt from "../prompts/analysisPrompt.js";
+import buildEvaluationPrompt from "../prompts/evaluationPrompt.js";
+import evaluateApplicationWithAI from "../services/evaluationService.js";
 
 const requiredFileFields = [
   "applicationForm",
@@ -106,19 +108,33 @@ const analyzeApplication = async (req, res) => {
     // 7. AI analizini çalıştır
     const analysisResult = await analyzeWithAI(prompt);
 
+    // 8. AI değerlendirme promptunu oluştur
+    const evaluationPrompt = buildEvaluationPrompt({
+      referenceDocuments,
+      applicationDocuments,
+      analysisResult,
+    });
+
+    const evaluationResult =
+      await evaluateApplicationWithAI(
+        evaluationPrompt
+      );
+
     return res.status(200).json({
       success: true,
       message:
-        "Başvuru analizi başarıyla tamamlandı.",
-      result: analysisResult,
+        "Başvuru analizi ve nihai değerlendirmesi başarıyla tamamlandı.",
+      result: {
+        ...analysisResult,
+        finalEvaluation: evaluationResult,
+      },
     });
   } catch (error) {
-    console.error(
-      "Analyze application error:",
-      error
-    );
+    console.error("Analyze application error:", error);
 
-    return res.status(500).json({
+    const statusCode = error.statusCode || 500;
+
+    return res.status(statusCode).json({
       success: false,
       message:
         error.message ||
