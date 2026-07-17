@@ -1,12 +1,15 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Upload, FileText, FileSearch, LogOut } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  FileSearch,
+  LogOut,
+  Users,
+} from "lucide-react";
+
 import { useAuth } from "../../context/AuthContext";
 
-
-
-
 const Sidebar = () => {
-
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
@@ -19,7 +22,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col justify-between bg-slate-950 text-white">
+    <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col justify-between bg-slate-950 text-white lg:flex">
       <div>
         <div className="border-b border-white/10 p-6">
           <div className="flex items-center gap-3">
@@ -28,7 +31,10 @@ const Sidebar = () => {
             </div>
 
             <div>
-              <h1 className="text-xl font-bold tracking-wide">PYB AI</h1>
+              <h1 className="text-xl font-bold tracking-wide">
+                PYB AI
+              </h1>
+
               <p className="text-xs text-slate-300">
                 Teknik Destek Analiz Sistemi
               </p>
@@ -49,26 +55,31 @@ const Sidebar = () => {
             icon={<FileText size={18} />}
             text="Şablonlar & Rehber"
           />
+
+          {user?.role === "admin" && (
+            <SidebarLink
+              to="/users"
+              icon={<Users size={18} />}
+              text="Kullanıcı Yönetimi"
+            />
+          )}
         </nav>
       </div>
 
       <div className="p-4">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-sm font-medium">Sistem Notu</p>
+          <p className="text-sm font-medium">
+            Sistem Notu
+          </p>
+
           <p className="mt-2 text-xs leading-relaxed text-slate-300">
-            Analiz sonuçları kullanıcıya ön rapor olarak sunulur. Nihai karar
-            uzman incelemesine aittir.
+            Analiz sonuçları kullanıcıya ön rapor olarak sunulur.
+            Nihai karar uzman incelemesine aittir.
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/15 hover:text-white"
-        >
-          <LogOut size={17} />
-          Çıkış Yap
-        </button>
+
         {user && (
-          <div className="mb-3 rounded-xl bg-white/5 p-3">
+          <div className="mt-3 rounded-xl bg-white/5 p-3">
             <p className="text-sm font-medium text-white">
               {user.name}
             </p>
@@ -76,8 +87,20 @@ const Sidebar = () => {
             <p className="mt-1 truncate text-xs text-slate-400">
               {user.email}
             </p>
+
+            <p className="mt-1 text-xs capitalize text-blue-300">
+              {user.role === "admin" ? "Yönetici" : "Uzman"}
+            </p>
           </div>
         )}
+
+        <button
+          onClick={handleLogout}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/15 hover:text-white"
+        >
+          <LogOut size={17} />
+          Çıkış Yap
+        </button>
       </div>
     </aside>
   );

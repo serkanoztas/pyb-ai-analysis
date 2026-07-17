@@ -30,7 +30,7 @@ const Login = () => {
       });
     }
   }, [authLoading, isAuthenticated, navigate]);
-  
+
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -213,7 +213,12 @@ const Login = () => {
 
               <button
                 type="button"
-                className="text-sm font-medium text-blue-600 hover:underline"
+                onClick={() =>
+                  alert(
+                    "Şifre sıfırlama işlemi için sistem yöneticinizle iletişime geçiniz."
+                  )
+                }
+                className="text-sm text-blue-600 hover:underline"
               >
                 Şifremi unuttum
               </button>

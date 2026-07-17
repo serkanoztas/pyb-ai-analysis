@@ -4,6 +4,7 @@ import authRoutes from "./routes/authRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/users", userRoutes);
 
 // 404 handler
 app.use((req, res) => {

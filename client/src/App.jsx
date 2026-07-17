@@ -13,6 +13,8 @@ import MainLayout from "./components/layout/MainLayout";
 import Login from "./pages/Login";
 import NewAnalysis from "./pages/NewAnalysis";
 import Templates from "./pages/Templates";
+import Users from "./pages/Users";
+import AdminRoute from "./components/routes/AdminRoute";
 
 const App = () => {
   return (
@@ -41,7 +43,16 @@ const App = () => {
               path="templates"
               element={<Templates />}
             />
+
+            <Route element={<AdminRoute />}>
+              <Route
+                path="users"
+                element={<Users />}
+              />
+            </Route>
+
           </Route>
+
 
           <Route
             path="*"
