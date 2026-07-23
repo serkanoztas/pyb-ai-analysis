@@ -39,6 +39,11 @@ const calculateRetryDelay = (attempt) => {
   return exponentialDelay + jitter;
 };
 
+const models = [
+  process.env.GEMINI_MODEL,
+  process.env.GEMINI_FALLBACK_MODEL,
+].filter(Boolean);
+
 const analyzeWithAI = async (prompt) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -48,84 +53,103 @@ const analyzeWithAI = async (prompt) => {
     );
   }
 
-  const ai = new GoogleGenAI({
-    apiKey,
-  });
+  const ai = new GoogleGenAI({ apiKey });
 
-  const maxAttempts = 4;
+  const models = [
+    process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+    process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite",
+  ];
+
+  const maxAttemptsPerModel = 2;
   let lastError;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      console.log(
-        `Gemini analiz isteği gönderiliyor. Deneme ${attempt}/${maxAttempts}`
-      );
+  console.log({
+    promptLength: prompt.length,
+    promptCharsKB: (prompt.length / 1024).toFixed(1),
+  });
 
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const outputText = response.text;
-
-      if (!outputText) {
-        throw new Error(
-          "Gemini tarafından analiz sonucu üretilemedi."
-        );
-      }
-
+  for (const model of models) {
+    for (
+      let attempt = 1;
+      attempt <= maxAttemptsPerModel;
+      attempt += 1
+    ) {
       try {
-        return JSON.parse(outputText);
-      } catch {
-        console.error("Gemini ham cevabı:", outputText);
-
-        throw new Error(
-          "Gemini cevabı geçerli JSON formatında alınamadı."
+        console.log(
+          `${model} analiz isteği gönderiliyor. Deneme ${attempt}/${maxAttemptsPerModel}`
         );
+
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+
+        const outputText = response.text;
+
+        if (!outputText) {
+          throw new Error(
+            "Gemini tarafından analiz sonucu üretilemedi."
+          );
+        }
+
+        try {
+          return JSON.parse(outputText);
+        } catch {
+          console.error("Gemini ham cevabı:", outputText);
+
+          throw new Error(
+            "Gemini cevabı geçerli JSON formatında alınamadı."
+          );
+        }
+      } catch (error) {
+        lastError = error;
+
+        console.error(`${model} deneme ${attempt} başarısız:`, {
+          status: error?.status,
+          message: error?.message,
+          cause: error?.cause?.message,
+          code: error?.cause?.code,
+        });
+
+        const retryable = isRetryableGeminiError(error);
+
+        if (!retryable) {
+          throw error;
+        }
+
+        const hasAnotherAttempt =
+          attempt < maxAttemptsPerModel;
+
+        if (hasAnotherAttempt) {
+          const delayMs = calculateRetryDelay(attempt);
+
+          console.log(
+            `${Math.round(
+              delayMs / 1000
+            )} saniye sonra aynı model yeniden denenecek.`
+          );
+
+          await sleep(delayMs);
+        }
       }
-    } catch (error) {
-      lastError = error;
-
-      console.error(`Gemini deneme ${attempt} başarısız:`, {
-        status: error?.status,
-        message: error?.message,
-        cause: error?.cause?.message,
-        code: error?.cause?.code,
-      });
-
-      const canRetry =
-        isRetryableGeminiError(error) &&
-        attempt < maxAttempts;
-
-      if (!canRetry) {
-        break;
-      }
-
-      const delayMs = calculateRetryDelay(attempt);
-
-      console.log(
-        `${Math.round(
-          delayMs / 1000
-        )} saniye sonra yeniden denenecek.`
-      );
-
-      await sleep(delayMs);
     }
-  }
 
-  if (isRetryableGeminiError(lastError)) {
-    const serviceError = new Error(
-      "Yapay zeka servisine şu anda bağlantı kurulamıyor. Lütfen birkaç dakika sonra tekrar deneyin."
+    console.warn(
+      `${model} kullanılamadı. Sonraki modele geçiliyor.`
     );
-
-    serviceError.statusCode = 503;
-    throw serviceError;
   }
 
-  throw lastError;
-};
+  const serviceError = new Error(
+    "Yapay zeka servisi şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin."
+  );
+
+  serviceError.statusCode = 503;
+  serviceError.cause = lastError;
+
+  throw serviceError;
+};;
 
 export default analyzeWithAI;

@@ -1,6 +1,10 @@
 import api from "./api";
 
-const analyzeApplication = async (files) => {
+const analyzeApplication = async (
+  files,
+  evaluationScores
+) => {
+
   const formData = new FormData();
 
   Object.entries(files).forEach(([field, file]) => {
@@ -9,11 +13,15 @@ const analyzeApplication = async (files) => {
     }
   });
 
-  for (const [key, value] of formData.entries()) {
-    console.log("FormData:", key, value.name);
-  }
+  formData.append(
+    "evaluationScores",
+    JSON.stringify(evaluationScores)
+  );
 
-  const response = await api.post("/analysis", formData);
+  const response = await api.post(
+    "/analysis",
+    formData
+  );
 
   return response.data;
 };

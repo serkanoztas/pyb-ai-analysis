@@ -8,8 +8,18 @@ import {
 import UploadSection from "../components/upload/UploadSection";
 import LoadingState from "../components/analysis/LoadingState";
 import AnalysisResults from "../components/analysis/AnalysisResults";
+import EvaluationSection from "../components/evaluation/EvaluationSection";
 
 import { analyzeApplication } from "../services/analysisService";
+
+import {
+  evaluationCriteria,
+} from "../constants/evaluationCriteria.js";
+
+const createEmptyScores = () =>
+  Object.fromEntries(
+    evaluationCriteria.map((criterion) => [criterion.code, ""])
+  );
 
 const emptyFiles = {
   applicationForm: null,
@@ -20,6 +30,10 @@ const emptyFiles = {
 
 const NewAnalysis = () => {
   const [files, setFiles] = useState(emptyFiles);
+  const [evaluationScores, setEvaluationScores] = useState(
+    createEmptyScores
+  );
+
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState("");
@@ -40,15 +54,47 @@ const NewAnalysis = () => {
     setAnalysisResult(null);
   };
 
-  const handleAnalyze = async () => {
-    console.log("Gönderilecek dosyalar:", files);
-    const missingFiles = Object.entries(files)
-      .filter(([, file]) => !file)
-      .map(([field]) => fieldLabels[field]);
+  const handleScoreChange = (criterionCode, value) => {
+    setEvaluationScores((prev) => ({
+      ...prev,
+      [criterionCode]: value,
+    }));
 
-    if (missingFiles.length > 0) {
+    setError("");
+    setSuccessMessage("");
+    setAnalysisResult(null);
+  };
+
+  const handleAnalyze = async () => {
+    if (!files.applicationForm) {
+      setError("Lütfen Başvuru Formunu yükleyin.");
+      return;
+    }
+
+    const hasEmptyScore = evaluationCriteria.some((criterion) => {
+      const value = evaluationScores[criterion.code];
+
+      return value === "" || value === null || value === undefined;
+    });
+
+    if (hasEmptyScore) {
+      setError("Lütfen tüm değerlendirme puanlarını giriniz.");
+      return;
+    }
+
+    const hasInvalidScore = evaluationCriteria.some((criterion) => {
+      const score = Number(evaluationScores[criterion.code]);
+
+      return (
+        !Number.isFinite(score) ||
+        score < 0 ||
+        score > criterion.maxScore
+      );
+    });
+
+    if (hasInvalidScore) {
       setError(
-        `Lütfen şu belgeleri yükleyin: ${missingFiles.join(", ")}`
+        "Girilen puanlardan biri geçersiz veya maksimum puanı aşıyor."
       );
       return;
     }
@@ -59,9 +105,13 @@ const NewAnalysis = () => {
       setSuccessMessage("");
       setAnalysisResult(null);
 
-      const data = await analyzeApplication(files);
+      const data = await analyzeApplication(
+        files,
+        evaluationScores
+      );
 
       setAnalysisResult(data.result);
+
       setSuccessMessage(
         data.message || "Başvuru analizi başarıyla tamamlandı."
       );
@@ -94,6 +144,7 @@ const NewAnalysis = () => {
 
   const handleClear = () => {
     setFiles(emptyFiles);
+    setEvaluationScores(createEmptyScores());
     setAnalysisResult(null);
     setError("");
     setSuccessMessage("");
@@ -108,9 +159,26 @@ const NewAnalysis = () => {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Başvuru belgelerini yükleyin, yapay zeka destekli kalite ve
-            tutarlılık analizini başlatın.
+            Başvuru belgelerini yükleyin, değerlendirme puanlarını
+            girin ve yapay zekâ destekli gerekçe oluşturma işlemini
+            başlatın.
           </p>
+
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <h3 className="text-sm font-semibold text-blue-900">
+              Belge Yükleme Bilgisi
+            </h3>
+
+            <p className="mt-1 text-sm text-blue-700">
+              Başvuru Formu zorunludur.
+            </p>
+
+            <p className="text-sm text-blue-700">
+              Teknik Şartname, Tatbiki İmza Beyanı ve Fiyat Teklifleri
+              isteğe bağlıdır. Yüklenmeleri durumunda analiz kapsamına
+              dahil edilir.
+            </p>
+          </div>
         </div>
 
         <button
@@ -145,6 +213,12 @@ const NewAnalysis = () => {
         onAnalyze={handleAnalyze}
       />
 
+      <EvaluationSection
+        scores={evaluationScores}
+        onScoreChange={handleScoreChange}
+        disabled={loading}
+      />
+
       {loading && <LoadingState />}
 
       {!analysisResult && !loading && (
@@ -154,8 +228,8 @@ const NewAnalysis = () => {
           </h3>
 
           <p className="mt-2 text-sm text-slate-500">
-            Dört belgeyi yükleyip Analizi Başlat butonuna bastığınızda
-            sonuçlar burada görüntülenecek.
+            Başvuru Formunu yükleyin, değerlendirme puanlarını girin
+            ve Analizi Başlat butonuna basın.
           </p>
         </section>
       )}
@@ -168,13 +242,6 @@ const NewAnalysis = () => {
       )}
     </div>
   );
-};
-
-const fieldLabels = {
-  applicationForm: "Başvuru Formu",
-  technicalSpec: "Teknik Şartname",
-  signatureDeclaration: "Tatbiki İmza Beyanı",
-  priceOffers: "Fiyat Teklifleri",
 };
 
 export default NewAnalysis;

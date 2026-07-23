@@ -24,13 +24,13 @@ const FinalEvaluation = ({ evaluation }) => {
             <Award size={22} className="text-blue-600" />
 
             <h2 className="text-xl font-bold text-slate-900">
-              Nihai Değerlendirme
+              Değerlendirme Sonucu
             </h2>
           </div>
 
           <p className="mt-1 text-sm text-slate-500">
-            Başvuru, rehberdeki resmî değerlendirme kriterlerine göre
-            puanlanmıştır.
+            Birim çalışanı tarafından verilen puanlar ve yapay zekâ destekli
+            gerekçeler birlikte gösterilmektedir.
           </p>
         </div>
 
@@ -44,14 +44,16 @@ const FinalEvaluation = ({ evaluation }) => {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {categoryScores.map((category) => (
-          <CategoryScoreCard
-            key={category.code}
-            category={category}
-          />
-        ))}
-      </div>
+      {categoryScores.length > 0 && (
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {categoryScores.map((category) => (
+            <CategoryScoreCard
+              key={category.code}
+              category={category}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200">
         <div className="overflow-x-auto">
@@ -73,12 +75,23 @@ const FinalEvaluation = ({ evaluation }) => {
             </thead>
 
             <tbody>
-              {criteria.map((criterion) => (
-                <EvaluationRow
-                  key={criterion.code}
-                  criterion={criterion}
-                />
-              ))}
+              {criteria.length > 0 ? (
+                criteria.map((criterion) => (
+                  <EvaluationRow
+                    key={criterion.code}
+                    criterion={criterion}
+                  />
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-4 py-8 text-center text-sm text-slate-500"
+                  >
+                    Değerlendirme kriterleri bulunamadı.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -121,7 +134,17 @@ const FinalEvaluation = ({ evaluation }) => {
 const CategoryScoreCard = ({ category }) => {
   const percentage =
     category.maxScore > 0
-      ? Math.round((category.score / category.maxScore) * 100)
+      ? Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round(
+            (Number(category.score || 0) /
+              Number(category.maxScore)) *
+            100
+          )
+        )
+      )
       : 0;
 
   return (
@@ -189,7 +212,7 @@ const EvaluationRow = ({ criterion }) => {
           </p>
 
           <p className="mt-1 text-sm leading-relaxed text-slate-700">
-            {reason}
+            {reason || "Bu kriter için gerekçe oluşturulamadı."}
           </p>
         </div>
 
