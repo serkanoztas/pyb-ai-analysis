@@ -57,7 +57,7 @@ const analyzeWithAI = async (prompt) => {
 
   const models = [
     process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
-    process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite",
+    process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite",
   ];
 
   const maxAttemptsPerModel = 2;

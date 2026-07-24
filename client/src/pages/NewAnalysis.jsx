@@ -16,6 +16,11 @@ import {
   evaluationCriteria,
 } from "../constants/evaluationCriteria.js";
 
+import {
+  downloadCommitteeReport,
+} from "../services/committeeReportService";
+
+
 const createEmptyScores = () =>
   Object.fromEntries(
     evaluationCriteria.map((criterion) => [criterion.code, ""])
@@ -38,6 +43,10 @@ const NewAnalysis = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [
+    isDownloadingCommitteeReport,
+    setIsDownloadingCommitteeReport,
+  ] = useState(false);
 
   const handleFileChange = (e, field) => {
     const file = e.target.files?.[0];
@@ -64,6 +73,9 @@ const NewAnalysis = () => {
     setSuccessMessage("");
     setAnalysisResult(null);
   };
+
+  const [analysisId, setAnalysisId] =
+    useState(null);
 
   const handleAnalyze = async () => {
     if (!files.applicationForm) {
@@ -110,6 +122,15 @@ const NewAnalysis = () => {
         evaluationScores
       );
 
+
+      const response = await analyzeApplication(
+        files,
+        evaluationScores
+      );
+
+      setAnalysisResult(response.result);
+      setAnalysisId(response.analysisId);
+
       setAnalysisResult(data.result);
 
       setSuccessMessage(
@@ -142,12 +163,80 @@ const NewAnalysis = () => {
     }
   };
 
+  const handleDownloadCommitteeReport =
+    async () => {
+      if (!analysisId) {
+        alert(
+          "Önce başvuru analizini tamamlamalısınız."
+        );
+        return;
+      }
+
+      try {
+        setIsDownloadingCommitteeReport(true);
+
+        const response =
+          await downloadCommitteeReport(
+            analysisId
+          );
+
+        const contentType =
+          response.headers["content-type"];
+
+        if (
+          !contentType?.includes(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          )
+        ) {
+          throw new Error(
+            "Sunucudan geçerli bir Word dosyası alınamadı."
+          );
+        }
+
+        const blob = new Blob(
+          [response.data],
+          {
+            type: contentType,
+          }
+        );
+
+        const url =
+          window.URL.createObjectURL(blob);
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          `komite-uyesi-raporu-${analysisId}.docx`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error(
+          "Komite raporu indirme hatası:",
+          error
+        );
+
+        alert(
+          "Komite üyesi raporu indirilemedi."
+        );
+      } finally {
+        setIsDownloadingCommitteeReport(false);
+      }
+    };
+
   const handleClear = () => {
     setFiles(emptyFiles);
     setEvaluationScores(createEmptyScores());
     setAnalysisResult(null);
     setError("");
     setSuccessMessage("");
+    setAnalysisId(null);
   };
 
   return (
@@ -240,7 +329,27 @@ const NewAnalysis = () => {
           files={files}
         />
       )}
+
+      <div className="my-5 mx-auto">
+        {analysisId && (
+          <button
+            type="button"
+            onClick={
+              handleDownloadCommitteeReport
+            }
+            disabled={
+              isDownloadingCommitteeReport
+            }
+            className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDownloadingCommitteeReport
+              ? "Rapor hazırlanıyor..."
+              : "Komite Üyesi Raporunu Word Olarak İndir"}
+          </button>
+        )}
+      </div>
     </div>
+
   );
 };
 

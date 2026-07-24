@@ -584,7 +584,15 @@ const documentTypes = [
       "Yetkili kişi, imza ve beyan kontrol alanları",
     icon: FileSignature,
     color: "red",
-  }
+  },
+  {
+    value: "committee_example",
+    label: "Komite Raporu Örneği",
+    description:
+      "Gerçek komisyon değerlendirme raporları (AI üslup referansı)",
+    icon: FileText,
+    color: "green",
+  },
 ];
 
 export default Templates;

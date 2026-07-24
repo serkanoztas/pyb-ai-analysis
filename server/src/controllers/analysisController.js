@@ -1,5 +1,5 @@
 import Template from "../models/Template.js";
-
+import Analysis from "../models/Analysis.js";
 import extractTextFromFile from "../services/textExtractionService.js";
 import deleteTemporaryFile from "../services/fileCleanupService.js";
 import analyzeWithAI from "../services/aiService.js";
@@ -260,15 +260,30 @@ const analyzeApplication = async (req, res) => {
         evaluationPrompt,
         preparedEvaluationScores
       );
+    const savedAnalysis = await Analysis.create({
+      createdBy: req.user?._id || req.user?.id || undefined,
+
+      applicationDocuments,
+      referenceDocuments,
+      uploadedDocumentStatus,
+
+      evaluationScores: preparedEvaluationScores,
+      totalEvaluationScore,
+      totalMaximumScore,
+
+      analysisResult,
+      finalEvaluation: evaluationResult,
+    });
     return res.status(200).json({
       success: true,
       message:
-        "Başvuru analizi ve nihai değerlendirme gerekçeleri başarıyla oluşturuldu.",
+        "Başvuru analizi ve değerlendirme gerekçeleri başarıyla oluşturuldu.",
+      analysisId: savedAnalysis._id,
       result: {
         ...analysisResult,
         finalEvaluation: evaluationResult,
       },
-    });
+    });;
   } catch (error) {
     console.error(
       "Analyze application error:",

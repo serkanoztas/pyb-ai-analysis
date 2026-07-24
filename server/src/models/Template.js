@@ -16,6 +16,7 @@ const templateSchema = new mongoose.Schema(
         "guide",
         "technical_spec_template",
         "signature_declaration_template",
+        "committee_example",
       ],
     },
 

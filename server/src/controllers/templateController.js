@@ -7,6 +7,7 @@ const allowedTemplateTypes = [
     "guide",
     "technical_spec_template",
     "signature_declaration_template",
+    "committee_example",
 ];
 
 const createTemplate = async (req, res) => {
@@ -29,17 +30,17 @@ const createTemplate = async (req, res) => {
 
         const extractedText = await extractTextFromFile(req.file);
 
-        await Template.updateMany(
-            {
-                type,
-                isActive: true,
-            },
-            {
-                $set: {
-                    isActive: false,
+        if (type !== "committee_example") {
+            await Template.updateMany(
+                {
+                    type,
+                    isActive: true,
                 },
-            }
-        );
+                {
+                    isActive: false,
+                }
+            );
+        }
 
         const template = await Template.create({
             name: name.trim(),
