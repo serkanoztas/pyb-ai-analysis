@@ -180,19 +180,65 @@ Aynı olumsuz cümle birden fazla kriter yorumunda birebir tekrar ediyorsa yaln�
 GENEL AÇIKLAMALAR
 ==================================================
 
-Genel olumlu açıklama:
+Genel olumlu açıklama oluştururken;
 
-- Başvurunun tüm kategorilerdeki temel güçlü yönlerini özetlesin.
-- Program önceliği, ihtiyaç, katma değer, kurumsal kapasite ve sürdürülebilirlik boyutlarını birlikte ele alsın.
-- 1 ile 3 kısa paragraf arasında olsun.
+- Yeni bir değerlendirme yazma.
+- Yeni analiz yapma.
+- Yeni gerekçe üretme.
+- Özetleme yapma.
+- Cümleleri yeniden yazma.
+- Kelime çıkarma.
+- Kelime ekleme.
+- Cümleleri kısaltma.
+- Eş anlamlı kullanarak yeniden ifade etme.
 
-Genel olumsuz açıklama:
+Genel olumlu açıklama;
 
-- Başvurunun tüm kategorilerdeki temel geliştirme alanlarını özetlesin.
-- Yalnızca belgelerde doğrulanabilen sınırlılıkları kullansın.
-- Olumsuz bir husus yoksa tam olarak şu ifadeyi kullan:
+yalnızca dört kategoriye ait positiveComment alanlarının eksiksiz biçimde ardışık olarak birleştirilmiş halidir.
+
+Her kategoriye ait positiveComment metnini:
+
+- kelimesi kelimesine,
+- hiçbir kısmını çıkarmadan,
+- hiçbir kısmını değiştirmeden
+
+sırayla yaz.
+
+==================================================
+
+Genel olumsuz açıklama oluştururken;
+
+- Yeni değerlendirme yazma.
+- Yeni analiz yapma.
+- Yeni gerekçe üretme.
+- Özetleme yapma.
+- Cümleleri yeniden yazma.
+- Kelime çıkarma.
+- Kelime ekleme.
+- Cümleleri kısaltma.
+- Eş anlamlı kullanarak yeniden ifade etme.
+
+Genel olumsuz açıklama;
+
+yalnızca dört kategoriye ait negativeComment alanlarının eksiksiz biçimde ardışık olarak birleştirilmiş halidir.
+
+Her kategoriye ait negativeComment metnini:
+
+- kelimesi kelimesine,
+- hiçbir kısmını çıkarmadan,
+- hiçbir kısmını değiştirmeden
+
+sırayla yaz.
+
+Eğer bütün kategorilerde
+
+"Olumsuz bir yorum bulunmamaktadır."
+
+yazıyorsa genel olumsuz açıklama da tam olarak
 
 "Olumsuz bir açıklama bulunmamaktadır."
+
+olsun.
 
 ==================================================
 DEĞERLENDİRME KRİTERLERİ VE PUANLAR
@@ -296,6 +342,18 @@ positiveComment alanı, ilgili kategoriye ait criterion.comment alanlarındaki o
 negativeComment alanı, ilgili kategoriye ait criterion.comment alanlarındaki olumsuz veya sınırlılık bildiren cümlelerin eksiksiz ve kelimesi kelimesine aktarılmış birleşimidir.
 
 Bu iki alanda özetleme, sadeleştirme, yeniden yazma veya cümle kısaltma kesinlikle yasaktır.
+
+Genel açıklamalar için özel kural:
+
+overallPositive alanı;
+
+positiveComment alanlarının hiçbir değişiklik yapılmadan sırayla birleştirilmiş halidir.
+
+overallNegative alanı;
+
+negativeComment alanlarının hiçbir değişiklik yapılmadan sırayla birleştirilmiş halidir.
+
+Bu iki alanda yeni analiz, yeni yorum, özetleme veya yeniden yazım yapılması kesinlikle yasaktır.
 
 ==================================================
 ÇIKTI KURALLARI

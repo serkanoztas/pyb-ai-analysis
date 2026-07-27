@@ -4,7 +4,93 @@ const sleep = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-// tekrar çalışabilme kontrolü
+const extractBalancedJsonObject = (text) => {
+  const startIndex = text.indexOf("{");
+
+  if (startIndex === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = startIndex; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+
+    if (character === "\\" && inString) {
+      isEscaped = true;
+      continue;
+    }
+
+    if (character === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (character === "{") {
+      depth += 1;
+    }
+
+    if (character === "}") {
+      depth -= 1;
+
+      if (depth === 0) {
+        return text.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+};
+
+const parseGeminiJson = (outputText) => {
+  const cleanedText = outputText
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .replace(/^\uFEFF/, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleanedText);
+  } catch (firstParseError) {
+    const balancedJson =
+      extractBalancedJsonObject(cleanedText);
+
+    if (!balancedJson) {
+      const error = new Error(
+        "Gemini cevabında tamamlanmış bir JSON nesnesi bulunamadı."
+      );
+
+      error.code = "INVALID_JSON_RESPONSE";
+      error.cause = firstParseError;
+      throw error;
+    }
+
+    try {
+      return JSON.parse(balancedJson);
+    } catch (secondParseError) {
+      const error = new Error(
+        "Gemini cevabı geçerli JSON formatında alınamadı."
+      );
+
+      error.code = "INVALID_JSON_RESPONSE";
+      error.cause = secondParseError;
+      throw error;
+    }
+  }
+};
+
 const isRetryableGeminiError = (error) => {
   const status = error?.status;
   const message = error?.message || "";
@@ -12,6 +98,7 @@ const isRetryableGeminiError = (error) => {
   const causeMessage = error?.cause?.message || "";
 
   return (
+    error?.code === "INVALID_JSON_RESPONSE" ||
     status === 408 ||
     status === 429 ||
     status === 500 ||
@@ -33,16 +120,12 @@ const isRetryableGeminiError = (error) => {
 
 const calculateRetryDelay = (attempt) => {
   const baseDelay = 3000;
-  const exponentialDelay = baseDelay * 2 ** (attempt - 1);
+  const exponentialDelay =
+    baseDelay * 2 ** (attempt - 1);
   const jitter = Math.floor(Math.random() * 2000);
 
   return exponentialDelay + jitter;
 };
-
-const models = [
-  process.env.GEMINI_MODEL,
-  process.env.GEMINI_FALLBACK_MODEL,
-].filter(Boolean);
 
 const analyzeWithAI = async (prompt) => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -56,8 +139,10 @@ const analyzeWithAI = async (prompt) => {
   const ai = new GoogleGenAI({ apiKey });
 
   const models = [
-    process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
-    process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite",
+    process.env.GEMINI_MODEL ||
+    "gemini-3.1-flash-lite",
+    process.env.GEMINI_FALLBACK_MODEL ||
+    "gemini-3.5-flash-lite",
   ];
 
   const maxAttemptsPerModel = 2;
@@ -79,42 +164,57 @@ const analyzeWithAI = async (prompt) => {
           `${model} analiz isteği gönderiliyor. Deneme ${attempt}/${maxAttemptsPerModel}`
         );
 
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-          },
-        });
+        const response =
+          await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
 
         const outputText = response.text;
 
         if (!outputText) {
-          throw new Error(
+          const error = new Error(
             "Gemini tarafından analiz sonucu üretilemedi."
           );
+
+          error.code = "EMPTY_AI_RESPONSE";
+          throw error;
         }
 
         try {
-          return JSON.parse(outputText);
-        } catch {
-          console.error("Gemini ham cevabı:", outputText);
+          return parseGeminiJson(outputText);
+        } catch (parseError) {
+          console.error("Gemini JSON parse hatası:", {
+            message: parseError.message,
+            outputLength: outputText.length,
+            firstCharacters:
+              outputText.slice(0, 300),
+            lastCharacters:
+              outputText.slice(-500),
+          });
 
-          throw new Error(
-            "Gemini cevabı geçerli JSON formatında alınamadı."
-          );
+          throw parseError;
         }
       } catch (error) {
         lastError = error;
 
-        console.error(`${model} deneme ${attempt} başarısız:`, {
-          status: error?.status,
-          message: error?.message,
-          cause: error?.cause?.message,
-          code: error?.cause?.code,
-        });
+        console.error(
+          `${model} deneme ${attempt} başarısız:`,
+          {
+            status: error?.status,
+            message: error?.message,
+            cause: error?.cause?.message,
+            code:
+              error?.code ||
+              error?.cause?.code,
+          }
+        );
 
-        const retryable = isRetryableGeminiError(error);
+        const retryable =
+          isRetryableGeminiError(error);
 
         if (!retryable) {
           throw error;
@@ -124,7 +224,8 @@ const analyzeWithAI = async (prompt) => {
           attempt < maxAttemptsPerModel;
 
         if (hasAnotherAttempt) {
-          const delayMs = calculateRetryDelay(attempt);
+          const delayMs =
+            calculateRetryDelay(attempt);
 
           console.log(
             `${Math.round(
@@ -150,6 +251,6 @@ const analyzeWithAI = async (prompt) => {
   serviceError.cause = lastError;
 
   throw serviceError;
-};;
+};
 
 export default analyzeWithAI;

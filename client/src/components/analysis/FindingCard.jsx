@@ -38,9 +38,6 @@ const FindingCard = ({ number, title, icon, color, items = [] }) => {
         ))}
       </ul>
 
-      <button className="mt-5 text-sm font-medium text-blue-600 hover:underline">
-        Tümünü Görüntüle →
-      </button>
     </div>
   );
 };
