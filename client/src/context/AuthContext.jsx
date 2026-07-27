@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
       try {
         setToken(storedToken);
 
-        const response = await api.get("/api/auth/me");
+        const response = await api.get("/auth/me");
 
         setUser(response.data.user);
 
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password }) => {
     try {
-      const response = await api.post("/api/auth/login", {
+      const response = await api.post("/auth/login", {
         email,
         password,
       });
