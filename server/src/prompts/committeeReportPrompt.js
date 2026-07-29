@@ -65,6 +65,21 @@ YAZIM BİÇİMİ
 - Aynı ifadeleri farklı kriterlerde gereksiz şekilde tekrar etme.
 
 ==================================================
+ÜSLUP VE CÜMLE ÇEŞİTLİLİĞİ
+==================================================
+
+- Değerlendirme metinlerinde aynı bağlaçları gereksiz şekilde tekrar etme.
+- Özellikle "ancak" kelimesini sürekli kullanma.
+- Gerektiğinde şu alternatif geçiş ifadelerini doğal biçimde kullan:
+  "bununla birlikte", "buna karşın", "öte yandan", "diğer taraftan",
+  "bunun yanında", "aynı zamanda", "bununla beraber", "her ne kadar",
+  "bu çerçevede", "bu kapsamda", "dolayısıyla", "bu nedenle",
+  "ayrıca", "özellikle", "nitekim", "buna rağmen", "öte yandan",
+  "bunun sonucu olarak", "bununla eş zamanlı olarak".
+- Her kriter yorumunda mümkün olduğunca farklı cümle başlangıçları ve geçiş ifadeleri kullan.
+- Kurumsal yazım dilini korurken metinlerin doğal ve akıcı olmasına dikkat et.
+
+==================================================
 GERÇEK KOMİTE RAPORLARININ KULLANIMI
 ==================================================
 
