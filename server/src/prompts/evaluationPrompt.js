@@ -3,11 +3,29 @@ const buildEvaluationPrompt = ({
   applicationDocuments,
   analysisResult,
   uploadedDocumentStatus,
+  scoringMode,
   evaluationScores,
-  totalEvaluationScore,
+  requestedTotalScore,
   totalMaximumScore,
+  evaluationCriteria,
 }) => {
-  const criteriaText = evaluationScores
+  if (!["criteria", "total"].includes(scoringMode)) {
+    throw new Error("Geçersiz puanlama yöntemi.");
+  }
+
+  const isCriteriaMode = scoringMode === "criteria";
+
+  const sourceCriteria = isCriteriaMode
+    ? evaluationScores
+    : evaluationCriteria;
+
+  if (!Array.isArray(sourceCriteria)) {
+    throw new Error(
+      "Değerlendirme kriterleri prompt oluşturmak için bulunamadı."
+    );
+  }
+
+  const criteriaText = sourceCriteria
     .map(
       (criterion) => `
 KRİTER ${criterion.code}
@@ -17,59 +35,103 @@ Kategori: ${criterion.category}
 Değerlendirme sorusu:
 ${criterion.question}
 
-Kullanıcı tarafından verilen puan:
+Azami puan:
+${criterion.maxScore}
+${isCriteriaMode
+          ? `
+Birim çalışanı tarafından verilen puan:
 ${criterion.score} / ${criterion.maxScore}
+`
+          : ""
+        }
 `
     )
     .join("\n");
 
-  return `
-Sen, Teknik Destek Programı başvuruları için değerlendirme gerekçeleri hazırlayan tarafsız bir raporlama asistanısın.
+  const criterionCodes = sourceCriteria
+    .map((criterion) => criterion.code)
+    .join("\n");
 
-Başvurunun puanlaması birim çalışanı tarafından önceden yapılmıştır.
-
-Senin görevin puan vermek, puan önermek veya mevcut puanları değiştirmek değildir.
-
-Görevin, birim çalışanının verdiği her puan için başvuru belgelerine dayalı, açık, profesyonel ve anlaşılır bir gerekçe oluşturmaktır.
-
+  const scoringInstructions = isCriteriaMode
+    ? `
 ==================================================
-TEMEL GÖREV
+PUANLAMA YÖNTEMİ: KRİTER PUANLARI
 ==================================================
 
-Aşağıda 9 değerlendirme kriteri ve her kriter için birim çalışanı tarafından verilmiş puan bulunmaktadır.
+Başvurunun her kriter puanı birim çalışanı tarafından önceden verilmiştir.
 
-Her kriter için:
+Senin görevin:
 
-- Verilen puanı aynen koru.
-- Verilen puanı kesinlikle değiştirme.
-- Alternatif puan önerme.
-- Başvurunun ilgili kriter bakımından güçlü ve zayıf yönlerini belirle.
-- Verilen puanın neden uygun görülebileceğini açıkla.
-- Gerekçeyi mevcut başvuru belgelerine dayandır.
-- Puanın tam puan olmaması durumunda hangi geliştirme alanlarının bulunduğunu açıkla.
-- Puan düşükse eksik, sınırlı veya yeterince açıklanmamış kısımları belirt.
-- Puan yüksekse güçlü, açık, tutarlı ve somut unsurları belirt.
+- Verilen kriter puanlarını aynen korumak,
+- Her puan için belgeye dayalı gerekçe yazmak,
+- Güçlü ve zayıf yönleri açıklamak,
+- Somut kanıtları belirtmek,
+- Geliştirme önerisi oluşturmaktır.
 
-==================================================
-PUANLARIN KORUNMASI
-==================================================
+Senin görevin puan vermek veya puan değiştirmek değildir.
 
-Aşağıdaki puanlar birim çalışanı tarafından verilmiştir ve değiştirilemez.
+Aşağıdaki kurallara kesinlikle uy:
 
+- Her kriterin score değerini verilen puanla birebir aynı döndür.
 - Yeni puan hesaplama.
 - Puan yükseltme veya düşürme.
-- Puanın yanlış olduğunu söyleme.
-- Farklı bir puan önerme.
-- Puan aralığına göre otomatik puan üretme.
+- Alternatif puan önerme.
+- Mevcut puanın yanlış olduğunu söyleme.
 - Belgelerin farklı bir puanı hak ettiğini belirtme.
+- Toplam puanı değiştirecek herhangi bir puan üretme.
 
-Çıktıdaki score değeri, sana verilen score değeriyle birebir aynı olmalıdır.
+Kullanıcı tarafından verilen toplam puan:
 
+${requestedTotalScore} / ${totalMaximumScore}
+`
+    : `
+==================================================
+PUANLAMA YÖNTEMİ: TOPLAM PUANIN DAĞITILMASI
+==================================================
+
+Birim çalışanı yalnızca toplam puanı vermiştir.
+
+Verilen toplam puan:
+
+${requestedTotalScore} / ${totalMaximumScore}
+
+Senin görevin:
+
+- Verilen toplam puanı bütün değerlendirme kriterlerine dağıtmak,
+- Her kriter için tam sayı bir score değeri üretmek,
+- Her kriterin azami puan sınırına uymak,
+- Dağılımı başvuru belgelerindeki güçlü ve zayıf yönlere göre yapmak,
+- Her kriter puanı için belgeye dayalı gerekçe yazmak,
+- Somut kanıtları belirtmek,
+- Geliştirme önerisi oluşturmaktır.
+
+Zorunlu kurallar:
+
+- Bütün kriterlerin score değerlerinin toplamı tam olarak ${requestedTotalScore} olmalıdır.
+- Toplam puanı artırma veya azaltma.
+- Her kriter için yalnızca tam sayı puan kullan.
+- Hiçbir kriter için negatif puan üretme.
+- Hiçbir kriterin azami puanını aşma.
+- Kriterler arasında rastgele veya eşit dağılım yapma.
+- Puanları başvuru belgelerindeki açıklama, tutarlılık, somutluk ve yeterlilik düzeyine göre dağıt.
+- Ön analiz sonucunu yardımcı kaynak olarak kullan ancak başvuru belgelerini esas al.
+- Bir kriter için yeterli bilgi bulunmuyorsa daha düşük puan ver ve reviewRequired değerini true yap.
+- Yüklenmemiş opsiyonel bir belgeyi tek başına puan düşürme nedeni yapma.
+
+Ürettiğin bütün kriter puanlarının matematiksel toplamını cevap vermeden önce kontrol et.
+
+Toplam şu değere birebir eşit olmalıdır:
+
+${requestedTotalScore}
+`;
+
+  const scoreToneInstructions = isCriteriaMode
+    ? `
 ==================================================
 GEREKÇE YAZIM YAKLAŞIMI
 ==================================================
 
-Gerekçeyi verilen puanın seviyesine uygun biçimde yaz.
+Gerekçeyi birim çalışanının verdiği puanın seviyesine uygun biçimde yaz.
 
 Puan, azami puanın %90-100'ü arasındaysa:
 
@@ -97,9 +159,61 @@ Puan, azami puanın %0-24'ü arasındaysa:
 - Kriterin başvuru içeriğinde yeterince karşılanmadığını belirt.
 - Hangi bilgilerin bulunmadığını veya yetersiz kaldığını açıkla.
 
-Bu oranlar yalnızca gerekçenin tonunu ve kapsamını belirlemek için kullanılmalıdır.
+Bu oranlar yalnızca gerekçenin tonunu belirlemek için kullanılmalıdır.
 
 Bu oranlara göre yeni puan üretme.
+`
+    : `
+==================================================
+PUAN DAĞITIM YAKLAŞIMI
+==================================================
+
+Her kriteri aşağıdaki unsurlara göre ayrı ayrı değerlendir:
+
+- İlgili açıklamanın başvuru belgelerinde bulunması,
+- Açıklamanın açık ve anlaşılır olması,
+- Somut bilgi veya kanıt içermesi,
+- Amaç, ihtiyaç, faaliyet ve sonuçlar arasındaki tutarlılık,
+- Uygulanabilirlik,
+- Kurumsal kapasite,
+- Beklenen etki,
+- Sürdürülebilirlik,
+- Rehber hükümlerine uygunluk.
+
+Puan düzeylerini genel olarak şu şekilde kullan:
+
+- Azami puanın %90-100'ü: Kriter açık, güçlü, somut ve büyük ölçüde eksiksizdir.
+- Azami puanın %70-89'u: Kriter büyük ölçüde karşılanmış, ancak sınırlı eksikler vardır.
+- Azami puanın %50-69'u: Kriter kısmen karşılanmış ve önemli geliştirme alanları vardır.
+- Azami puanın %25-49'u: Açıklamalar sınırlı, genel veya yeterince desteklenmemiştir.
+- Azami puanın %0-24'ü: Kriter büyük ölçüde karşılanmamış veya yeterli bilgi sunulmamıştır.
+
+Bu oranlar kesin bir formül değildir.
+
+Kriter puanlarını belgelerin gerçek içeriğine göre belirle ve toplamı tam olarak ${requestedTotalScore} olacak şekilde dengeli biçimde dağıt.
+`;
+
+  const expertNoteRule = isCriteriaMode
+    ? `
+- expertNote alanında puanların birim çalışanı tarafından verildiğini açıkça belirt.
+- expertNote alanında yapay zekânın yalnızca gerekçe oluşturduğunu belirt.
+`
+    : `
+- expertNote alanında toplam puanın birim çalışanı tarafından verildiğini açıkça belirt.
+- expertNote alanında yapay zekânın toplam puanı kriterlere dağıtarak gerekçe oluşturduğunu belirt.
+- expertNote alanında dağılımın uzman komisyon tarafından doğrulanması gerektiğini belirt.
+`;
+
+  return `
+Sen, Teknik Destek Programı başvuruları için değerlendirme raporu hazırlayan tarafsız ve profesyonel bir raporlama asistanısın.
+
+Değerlendirmeyi yalnızca verilen rehber, başvuru belgeleri ve ön analiz sonucu üzerinden yap.
+
+Belgelerde bulunmayan hiçbir bilgi, sayı, faaliyet veya açıklama üretme.
+
+${scoringInstructions}
+
+${scoreToneInstructions}
 
 ==================================================
 BELGE KAPSAMI
@@ -113,17 +227,17 @@ Teknik Şartname, Tatbiki İmza Beyanı ve Fiyat Teklifleri opsiyonel başvuru b
 
 Bir opsiyonel belge yüklenmişse:
 
-- İlgili kriterin gerekçesini hazırlarken belgeyi kullan.
+- İlgili kriterin değerlendirilmesinde belgeyi kullan.
 - Başvuru Formu ile tutarlılığını dikkate al.
 - Belgedeki somut içerikleri kanıt olarak kullan.
 
 Bir opsiyonel belge yüklenmemişse:
 
 - Bu durumu tek başına eksiklik veya uygunsuzluk olarak gösterme.
-- Belgenin yüklenmemesini puan gerekçesi yapma.
+- Belgenin yüklenmemesini tek başına puan gerekçesi yapma.
 - Belgenin varmış gibi içeriğini tahmin etme.
-- Değerlendirmeyi Başvuru Formu ve mevcut belgeler üzerinden açıkla.
-- Mevcut belgeler yeterli değilse gerekçede bilgi sınırlılığını belirt.
+- Değerlendirmeyi Başvuru Formu ve mevcut belgeler üzerinden yap.
+- Mevcut belgeler yeterli değilse bilgi sınırlılığını belirt.
 - Gerekiyorsa reviewRequired değerini true yap.
 
 ==================================================
@@ -172,20 +286,17 @@ YAZIM KURALLARI
 - Belgelerde bulunmayan bilgi, sayı, faaliyet veya açıklama uydurma.
 - Aynı ifadeleri farklı kriterlerde gereksiz biçimde tekrar etme.
 - Her reason alanı 2 ile 4 kısa cümle arasında olsun.
-- Gerekçe, verilen puanın nedenlerini doğrudan açıklasın.
+- Reason alanı verilen veya oluşturulan puanın nedenini doğrudan açıklasın.
 - Improvement alanı en fazla 1 cümle olsun.
-- Improvement alanında puanı yükseltebilecek somut geliştirmeyi belirt.
+- Improvement alanında ilgili kriterin geliştirilmesine yönelik somut öneri belirt.
 - Belgeler yeterli değilse reviewRequired değerini true yap.
 - Yeterli belge ve açıklama varsa reviewRequired değerini false yap.
 
 ==================================================
-VERİLEN DEĞERLENDİRME PUANLARI
+DEĞERLENDİRME KRİTERLERİ
 ==================================================
 
 ${criteriaText}
-
-Genel toplam:
-${totalEvaluationScore} / ${totalMaximumScore}
 
 ==================================================
 SİSTEME YÜKLENEN BELGELER
@@ -225,16 +336,16 @@ Yalnızca aşağıdaki yapıya uygun geçerli JSON döndür:
     {
       "code": "1.1",
       "score": 0,
-      "reason": "Birim çalışanı tarafından verilen puanın başvuru belgelerine dayalı açıklaması",
+      "reason": "Kriter puanının başvuru belgelerine dayalı açıklaması",
       "evidence": [
         "Başvuru belgesinde açıkça bulunan somut kanıt"
       ],
-      "improvement": "Başvurunun ilgili kriter bakımından geliştirilmesine yönelik somut öneri",
+      "improvement": "İlgili kriterin geliştirilmesine yönelik somut öneri",
       "reviewRequired": false
     }
   ],
-  "overallComment": "Verilen puanlar ve başvuru belgeleri doğrultusunda hazırlanan genel değerlendirme açıklaması",
-  "expertNote": "Puanların birim çalışanı tarafından verildiğini ve bu çıktının yalnızca puan gerekçelerinin hazırlanmasına yardımcı olduğunu belirten not"
+  "overallComment": "Puanlar ve başvuru belgeleri doğrultusunda hazırlanan genel değerlendirme açıklaması",
+  "expertNote": "Kullanılan puanlama yöntemi ve uzman doğrulaması hakkında açıklama"
 }
 
 ==================================================
@@ -245,39 +356,43 @@ Yalnızca aşağıdaki yapıya uygun geçerli JSON döndür:
 - Markdown kod bloğu kullanma.
 - Geçerli JSON sözdizimi kullan.
 - Son elemanlardan sonra virgül kullanma.
-- Tüm metin değerlerini çift tırnak içinde döndür.
+- Bütün metin değerlerini çift tırnak içinde döndür.
 - score değerlerini string değil tam sayı olarak döndür.
 - reviewRequired değerlerini boolean olarak döndür.
-- criteria dizisinde tam olarak 9 kriter bulunmalıdır.
+- criteria dizisinde tam olarak ${sourceCriteria.length} kriter bulunmalıdır.
 - Kriterleri verilen sıraya göre döndür.
 - Her kriter yalnızca bir kez bulunmalıdır.
 - Kriter kodları tam olarak şu şekilde olmalıdır:
 
-1.1
-1.2
-2.1
-2.2
-3.1
-3.2
-3.3
-4.1
-4.2
+${criterionCodes}
 
-- Her kriterin score değeri kendisine verilen puanla birebir aynı olmalıdır.
-- Score değerlerini kesinlikle değiştirme.
-- Yeni puan üretme.
-- Alternatif puan önerme.
-- Toplam puanı yeniden hesaplama.
-- Kategori toplamlarını üretme.
+- Her kriter için 0 ile kriterin azami puanı arasında tam sayı score değeri döndür.
 - evidence alanında en fazla 3 kanıt bulunmalıdır.
 - Somut kanıt yoksa evidence alanını boş dizi olarak döndür.
 - improvement alanı en fazla 1 cümle olmalıdır.
 - overallComment en fazla 2 kısa paragraf olmalıdır.
 - overallComment içerisinde kabul veya ret kararı verme.
-- expertNote alanında puanların birim çalışanı tarafından verildiğini açıkça belirt.
-- expertNote alanında yapay zekânın yalnızca gerekçe oluşturduğunu belirt.
-- Yüklenmeyen opsiyonel belgeleri hata veya eksiklik olarak gösterme.
+- Yüklenmeyen opsiyonel belgeleri tek başına hata veya eksiklik olarak gösterme.
 - Belgelerde bulunmayan hiçbir bilgiyi uydurma.
+
+${isCriteriaMode
+      ? `
+- Her kriterin score değeri kullanıcı tarafından verilen puanla birebir aynı olmalıdır.
+- Score değerlerini kesinlikle değiştirme.
+- Yeni puan üretme.
+- Alternatif puan önerme.
+- Kriter puanlarının toplamı tam olarak ${requestedTotalScore} olmalıdır.
+`
+      : `
+- Her kriter için başvuru belgelerine uygun bir puan üret.
+- Bütün score değerlerinin toplamı tam olarak ${requestedTotalScore} olmalıdır.
+- Toplam puanı artırma veya azaltma.
+- Puanları rastgele veya yalnızca matematiksel olarak dağıtma.
+- Cevabı döndürmeden önce kriter puanlarının toplamını kontrol et.
+`
+    }
+
+${expertNoteRule}
 
 Sadece geçerli JSON döndür.
 `;

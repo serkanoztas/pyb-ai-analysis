@@ -7,7 +7,9 @@ import {
 
 const EvaluationSection = ({
     scores,
+    totalScoreInput,
     onScoreChange,
+    onTotalScoreChange,
     disabled = false,
 }) => {
     const totalScore = evaluationCriteria.reduce((total, criterion) => {
@@ -19,6 +21,8 @@ const EvaluationSection = ({
 
         return total + score;
     }, 0);
+
+    console.log("totalScoreInput:", totalScoreInput);
 
     const totalMaxScore = evaluationCriteria.reduce(
         (total, criterion) => total + criterion.maxScore,
@@ -78,8 +82,9 @@ const EvaluationSection = ({
                     </div>
 
                     <p className="mt-1 text-sm text-slate-500">
-                        Birim çalışanı tarafından belirlenen puanları girin. Yapay zekâ
-                        puanları değiştirmeden yalnızca gerekçelerini oluşturacaktır.
+                        İsterseniz tüm kriter puanlarını tek tek girebilir, isterseniz
+                        yalnızca toplam puanı girerek yapay zekânın puanı kriterlere
+                        dağıtmasını sağlayabilirsiniz.
                     </p>
                 </div>
 
@@ -102,13 +107,48 @@ const EvaluationSection = ({
 
                 <div>
                     <p className="text-sm font-semibold text-blue-900">
-                        Puan giriş kuralları
+                        Puan giriş seçenekleri
                     </p>
 
                     <p className="mt-1 text-sm text-blue-700">
-                        Tüm kriterlere puan girilmelidir. Puanlar sıfırdan küçük ve
-                        kriterin maksimum puanından büyük olamaz.
+                        İki yöntemden yalnızca biri kullanılmalıdır.
                     </p>
+
+                    <ul className="mt-2 list-disc pl-5 text-sm text-blue-700 space-y-1">
+                        <li>Tüm kriter puanlarını tek tek girin.</li>
+                        <li>VEYA yalnızca toplam puanı girin.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="font-semibold text-slate-900">
+                            Toplam Puan
+                        </h3>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                            Eğer yalnızca toplam puan girerseniz,
+                            yapay zekâ bu puanı kriterlere dağıtarak
+                            komite raporunu oluşturacaktır.
+                        </p>
+                    </div>
+
+                    <div className="w-36">
+                        <input
+                            type="number"
+                            min={0}
+                            max={totalMaxScore}
+                            value={totalScoreInput}
+                            disabled={disabled}
+                            onChange={(e) =>
+                                onTotalScoreChange(e.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-center font-semibold"
+                            placeholder="0"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -182,7 +222,7 @@ const EvaluationSection = ({
                                                         max={criterion.maxScore}
                                                         step={1}
                                                         value={value}
-                                                        disabled={disabled}
+                                                        disabled={disabled || totalScoreInput !== ""}
                                                         onChange={(event) =>
                                                             handleInputChange(criterion, event)
                                                         }
@@ -232,7 +272,8 @@ const EvaluationSection = ({
                             />
 
                             <span className="text-sm text-slate-500">
-                                Analizi başlatmadan önce tüm puanları girin.
+                                Analizi başlatmadan önce tüm kriter puanlarını
+                                girin veya yalnızca toplam puanı girin.
                             </span>
                         </>
                     )}
@@ -244,7 +285,9 @@ const EvaluationSection = ({
                     </p>
 
                     <p className="text-2xl font-bold text-slate-900">
-                        {totalScore}
+                        {totalScoreInput !== ""
+                            ? totalScoreInput
+                            : totalScore}
                         <span className="text-base font-semibold text-slate-500">
                             /{totalMaxScore}
                         </span>

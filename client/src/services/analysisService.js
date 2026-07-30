@@ -2,9 +2,8 @@ import api from "./api";
 
 const analyzeApplication = async (
   files,
-  evaluationScores
+  scoringData
 ) => {
-
   const formData = new FormData();
 
   Object.entries(files).forEach(([field, file]) => {
@@ -14,9 +13,26 @@ const analyzeApplication = async (
   });
 
   formData.append(
-    "evaluationScores",
-    JSON.stringify(evaluationScores)
+    "scoringMode",
+    scoringData.scoringMode
   );
+
+  formData.append(
+    "evaluationScores",
+    JSON.stringify(
+      scoringData.evaluationScores ?? {}
+    )
+  );
+
+  if (
+    scoringData.totalScore !== null &&
+    scoringData.totalScore !== undefined
+  ) {
+    formData.append(
+      "totalScore",
+      String(scoringData.totalScore)
+    );
+  }
 
   const response = await api.post(
     "/analysis",

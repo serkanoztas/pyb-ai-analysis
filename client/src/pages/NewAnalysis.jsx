@@ -21,6 +21,9 @@ import {
 } from "../services/committeeReportService";
 
 
+
+
+
 const createEmptyScores = () =>
   Object.fromEntries(
     evaluationCriteria.map((criterion) => [criterion.code, ""])
@@ -47,6 +50,7 @@ const NewAnalysis = () => {
     isDownloadingCommitteeReport,
     setIsDownloadingCommitteeReport,
   ] = useState(false);
+  const [totalScore, setTotalScore] = useState("");
 
   const handleFileChange = (e, field) => {
     const file = e.target.files?.[0];
@@ -74,6 +78,14 @@ const NewAnalysis = () => {
     setAnalysisResult(null);
   };
 
+  const handleTotalScoreChange = (value) => {
+    setTotalScore(value);
+
+    setError("");
+    setSuccessMessage("");
+    setAnalysisResult(null);
+  };
+
   const [analysisId, setAnalysisId] =
     useState(null);
 
@@ -83,33 +95,99 @@ const NewAnalysis = () => {
       return;
     }
 
-    const hasEmptyScore = evaluationCriteria.some((criterion) => {
-      const value = evaluationScores[criterion.code];
+    const scoreValues = evaluationCriteria.map(
+      (criterion) => evaluationScores[criterion.code]
+    );
 
-      return value === "" || value === null || value === undefined;
-    });
+    const filledScoreCount = scoreValues.filter(
+      (value) =>
+        value !== "" &&
+        value !== null &&
+        value !== undefined
+    ).length;
 
-    if (hasEmptyScore) {
-      setError("Lütfen tüm değerlendirme puanlarını giriniz.");
-      return;
-    }
+    const allCriteriaScoresFilled =
+      filledScoreCount === evaluationCriteria.length;
 
-    const hasInvalidScore = evaluationCriteria.some((criterion) => {
-      const score = Number(evaluationScores[criterion.code]);
+    const allCriteriaScoresEmpty =
+      filledScoreCount === 0;
 
-      return (
-        !Number.isFinite(score) ||
-        score < 0 ||
-        score > criterion.maxScore
-      );
-    });
+    const someCriteriaScoresFilled =
+      filledScoreCount > 0 &&
+      filledScoreCount < evaluationCriteria.length;
 
-    if (hasInvalidScore) {
+    const hasTotalScore =
+      totalScore !== "" &&
+      totalScore !== null &&
+      totalScore !== undefined;
+
+    if (someCriteriaScoresFilled) {
       setError(
-        "Girilen puanlardan biri geçersiz veya maksimum puanı aşıyor."
+        "Kriter bazlı değerlendirme için tüm puanları girmelisiniz. Alternatif olarak tüm kriterleri boş bırakıp yalnızca toplam puan girebilirsiniz."
       );
       return;
     }
+
+    if (allCriteriaScoresFilled && hasTotalScore) {
+      setError(
+        "Kriter puanları ile toplam puanı aynı anda kullanamazsınız."
+      );
+      return;
+    }
+
+    if (allCriteriaScoresEmpty && !hasTotalScore) {
+      setError(
+        "Lütfen tüm kriter puanlarını veya yalnızca toplam puanı giriniz."
+      );
+      return;
+    }
+
+    if (allCriteriaScoresFilled) {
+      const hasInvalidScore = evaluationCriteria.some(
+        (criterion) => {
+          const score = Number(
+            evaluationScores[criterion.code]
+          );
+
+          return (
+            !Number.isFinite(score) ||
+            score < 0 ||
+            score > criterion.maxScore
+          );
+        }
+      );
+
+      if (hasInvalidScore) {
+        setError(
+          "Girilen kriter puanlarından biri geçersiz veya maksimum puanı aşıyor."
+        );
+        return;
+      }
+    }
+
+    const maximumTotalScore = evaluationCriteria.reduce(
+      (sum, criterion) => sum + criterion.maxScore,
+      0
+    );
+
+    if (hasTotalScore) {
+      const parsedTotalScore = Number(totalScore);
+
+      if (
+        !Number.isInteger(parsedTotalScore) ||
+        parsedTotalScore < 0 ||
+        parsedTotalScore > maximumTotalScore
+      ) {
+        setError(
+          `Toplam puan 0 ile ${maximumTotalScore} arasında bir tam sayı olmalıdır.`
+        );
+        return;
+      }
+    }
+
+    const scoringMode = allCriteriaScoresFilled
+      ? "criteria"
+      : "total";
 
     try {
       setLoading(true);
@@ -117,24 +195,24 @@ const NewAnalysis = () => {
       setSuccessMessage("");
       setAnalysisResult(null);
 
-      const data = await analyzeApplication(
-        files,
-        evaluationScores
-      );
-
-
-      const response = await analyzeApplication(
-        files,
-        evaluationScores
-      );
+      const response = await analyzeApplication(files, {
+        scoringMode,
+        evaluationScores:
+          scoringMode === "criteria"
+            ? evaluationScores
+            : {},
+        totalScore:
+          scoringMode === "total"
+            ? Number(totalScore)
+            : null,
+      });
 
       setAnalysisResult(response.result);
       setAnalysisId(response.analysisId);
 
-      setAnalysisResult(data.result);
-
       setSuccessMessage(
-        data.message || "Başvuru analizi başarıyla tamamlandı."
+        response.message ||
+        "Başvuru analizi başarıyla tamamlandı."
       );
     } catch (error) {
       console.error(
@@ -233,6 +311,7 @@ const NewAnalysis = () => {
   const handleClear = () => {
     setFiles(emptyFiles);
     setEvaluationScores(createEmptyScores());
+    setTotalScore("");
     setAnalysisResult(null);
     setError("");
     setSuccessMessage("");
@@ -304,7 +383,9 @@ const NewAnalysis = () => {
 
       <EvaluationSection
         scores={evaluationScores}
+        totalScoreInput={totalScore}
         onScoreChange={handleScoreChange}
+        onTotalScoreChange={handleTotalScoreChange}
         disabled={loading}
       />
 

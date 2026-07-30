@@ -93,6 +93,40 @@ const prepareEvaluationScores = (submittedScores) => {
   });
 };
 
+const getTotalMaximumScore = () =>
+  evaluationCriteria.reduce(
+    (total, criterion) => total + criterion.maxScore,
+    0
+  );
+
+const prepareTotalScore = (submittedTotalScore) => {
+  const totalMaximumScore = getTotalMaximumScore();
+
+  if (
+    submittedTotalScore === "" ||
+    submittedTotalScore === null ||
+    submittedTotalScore === undefined
+  ) {
+    throw new Error("Toplam değerlendirme puanı girilmemiş.");
+  }
+
+  const totalScore = Number(submittedTotalScore);
+
+  if (!Number.isInteger(totalScore)) {
+    throw new Error(
+      "Toplam değerlendirme puanı tam sayı olmalıdır."
+    );
+  }
+
+  if (totalScore < 0 || totalScore > totalMaximumScore) {
+    throw new Error(
+      `Toplam değerlendirme puanı 0 ile ${totalMaximumScore} arasında olmalıdır.`
+    );
+  }
+
+  return totalScore;
+};
+
 const analyzeApplication = async (req, res) => {
   const uploadedFiles = getAllUploadedFiles(req.files);
 
@@ -112,46 +146,66 @@ const analyzeApplication = async (req, res) => {
       });
     }
 
-    // 2. Kullanıcının girdiği değerlendirme puanlarını JSON olarak al
-    let parsedEvaluationScores;
+    // 2. Kullanıcının seçtiği puanlama yöntemini al
+    const scoringMode = req.body.scoringMode;
 
-    try {
-      parsedEvaluationScores = JSON.parse(
-        req.body.evaluationScores || "{}"
-      );
-    } catch {
+    if (!["criteria", "total"].includes(scoringMode)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Değerlendirme puanları geçerli JSON formatında değil.",
+        message: "Geçersiz puanlama yöntemi.",
       });
     }
 
-    // 3. Puanları doğrula ve kriter bilgileriyle birleştir
-    let preparedEvaluationScores;
+    const totalMaximumScore = getTotalMaximumScore();
 
-    try {
-      preparedEvaluationScores = prepareEvaluationScores(
-        parsedEvaluationScores
-      );
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+    let preparedEvaluationScores = null;
+    let requestedTotalScore = null;
+
+    if (scoringMode === "criteria") {
+      let parsedEvaluationScores;
+
+      try {
+        parsedEvaluationScores = JSON.parse(
+          req.body.evaluationScores || "{}"
+        );
+      } catch {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Değerlendirme puanları geçerli JSON formatında değil.",
+        });
+      }
+
+      try {
+        preparedEvaluationScores = prepareEvaluationScores(
+          parsedEvaluationScores
+        );
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      requestedTotalScore =
+        preparedEvaluationScores.reduce(
+          (total, criterion) => total + criterion.score,
+          0
+        );
     }
 
-    const totalEvaluationScore =
-      preparedEvaluationScores.reduce(
-        (total, criterion) => total + criterion.score,
-        0
-      );
-
-    const totalMaximumScore =
-      preparedEvaluationScores.reduce(
-        (total, criterion) => total + criterion.maxScore,
-        0
-      );
+    if (scoringMode === "total") {
+      try {
+        requestedTotalScore = prepareTotalScore(
+          req.body.totalScore
+        );
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    }
 
     // 4. Kullanılacak referans doküman türlerini belirle
     const templateTypes = ["guide"];
@@ -236,7 +290,8 @@ const analyzeApplication = async (req, res) => {
       analysisPromptCharsKB: (
         analysisPrompt.length / 1024
       ).toFixed(1),
-      totalEvaluationScore,
+      scoringMode,
+      requestedTotalScore,
       totalMaximumScore,
     });
 
@@ -249,17 +304,54 @@ const analyzeApplication = async (req, res) => {
       applicationDocuments,
       analysisResult,
       uploadedDocumentStatus,
-      evaluationScores: preparedEvaluationScores,
-      totalEvaluationScore,
+      scoringMode,
+      evaluationScores:
+        scoringMode === "criteria"
+          ? preparedEvaluationScores
+          : null,
+
+      requestedTotalScore,
       totalMaximumScore,
+      evaluationCriteria,
     });
 
     // 11. AI'dan yalnızca gerekçeleri al
     const evaluationResult =
       await evaluateApplicationWithAI(
         evaluationPrompt,
-        preparedEvaluationScores
+        {
+          scoringMode,
+          evaluationScores:
+            preparedEvaluationScores,
+          requestedTotalScore,
+          evaluationCriteria,
+        }
       );
+
+    const finalEvaluationScores =
+      evaluationResult.criteria;
+
+    const totalEvaluationScore =
+      evaluationResult.totalScore;
+    if (
+      !Array.isArray(finalEvaluationScores) ||
+      finalEvaluationScores.length !== evaluationCriteria.length
+    ) {
+      throw new Error(
+        "Yapay zekâ geçerli bir kriter puanı dağılımı oluşturamadı."
+      );
+    }
+
+
+    if (
+      scoringMode === "total" &&
+      totalEvaluationScore !== requestedTotalScore
+    ) {
+      throw new Error(
+        `Yapay zekâ puan dağılımı toplam puanla eşleşmiyor. Beklenen: ${requestedTotalScore}, oluşturulan: ${totalEvaluationScore}.`
+      );
+    }
+
     const savedAnalysis = await Analysis.create({
       createdBy: req.user?._id || req.user?.id || undefined,
 
@@ -267,7 +359,11 @@ const analyzeApplication = async (req, res) => {
       referenceDocuments,
       uploadedDocumentStatus,
 
-      evaluationScores: preparedEvaluationScores,
+      scoringMode,
+
+      requestedTotalScore,
+
+      evaluationScores: finalEvaluationScores,
       totalEvaluationScore,
       totalMaximumScore,
 
@@ -277,13 +373,23 @@ const analyzeApplication = async (req, res) => {
     return res.status(200).json({
       success: true,
       message:
-        "Başvuru analizi ve değerlendirme gerekçeleri başarıyla oluşturuldu.",
+        scoringMode === "total"
+          ? "Başvuru analizi tamamlandı ve toplam puan kriterlere dağıtıldı."
+          : "Başvuru analizi ve değerlendirme gerekçeleri başarıyla oluşturuldu.",
+
       analysisId: savedAnalysis._id,
+
       result: {
         ...analysisResult,
+
+        scoringMode,
+        evaluationScores: finalEvaluationScores,
+        totalEvaluationScore,
+        totalMaximumScore,
+
         finalEvaluation: evaluationResult,
       },
-    });;
+    });
   } catch (error) {
     console.error(
       "Analyze application error:",

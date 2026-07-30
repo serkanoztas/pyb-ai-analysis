@@ -55,6 +55,18 @@ const analysisSchema = new mongoose.Schema(
             default: "",
         },
 
+        scoringMode: {
+            type: String,
+            enum: ["criteria", "total"],
+            required: true,
+        },
+
+        requestedTotalScore: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+
         evaluationScores: {
             type: [evaluationScoreSchema],
             required: true,
