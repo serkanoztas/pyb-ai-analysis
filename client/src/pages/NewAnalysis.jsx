@@ -185,6 +185,8 @@ const NewAnalysis = () => {
       }
     }
 
+    
+
     const scoringMode = allCriteriaScoresFilled
       ? "criteria"
       : "total";
@@ -194,6 +196,7 @@ const NewAnalysis = () => {
       setError("");
       setSuccessMessage("");
       setAnalysisResult(null);
+
 
       const response = await analyzeApplication(files, {
         scoringMode,

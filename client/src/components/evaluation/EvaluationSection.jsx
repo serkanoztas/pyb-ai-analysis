@@ -141,7 +141,7 @@ const EvaluationSection = ({
                             min={0}
                             max={totalMaxScore}
                             value={totalScoreInput}
-                            disabled={disabled}
+                            disabled={disabled || completedScoreCount > 0}
                             onChange={(e) =>
                                 onTotalScoreChange(e.target.value)
                             }
